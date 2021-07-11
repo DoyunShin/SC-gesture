@@ -5,13 +5,53 @@ class storage(Exception):
     def __init__(self):
         self.debug = False
         self.test = True
+
+        self.rstset()
+        self.load_data()
+        self.load_opencv()
+
+        self.rang = [1100, 500, 750, 100]
+        self.tolerance = 0.3
+
         self.capture = capture(self)
         self.hand = hand(self)
         pass
 
+    def rstset(self):
+        self.rst = dummy()
+        self.rst.x = dummy()
+        self.rst.y = dummy()
+        self.rst.x.max = -20
+        self.rst.x.min = -80
+        self.rst.y.max = 0
+        self.rst.y.min = -40
+
+
+
+
+
     def load_opencv(self):
         import cv2
         self.opencv = cv2
+    
+    def load_data(self):
+        from os import path
+
+        if path.isfile("data.json") and path.exists("data.json"):
+            f = open("data.json", "r")
+            from json import loads
+            self.data = loads(f)
+        else:
+            self.storage = None
+
+        return False
+        pass
+   
+    def save_data(self):
+        f = open("data.json", "w")
+        from json import dump
+        f.write(dump(self.data))
+        f.close()
 
 class capture(Exception):
     def __init__(self, storage):
@@ -44,19 +84,14 @@ class capture(Exception):
 
     def show(self):
         while True:
-            try: 
-                tmp = self.success
-            except AttributeError as e:
-                if self.storage.debug == True: print("DEBUG: "+str(e))
-                print("DEBUG: "+"Waiting for Camera output...")
-                while True:
-                    try:
-                        tmp = self.success
-                        break
-                    except AttributeError:
-                        if self.storage.debug == True: print("DEBUG: "+str(e))
-                        pass
-                continue
+            while True:
+                try:
+                    tmp = self.capture.success
+                    break
+                except AttributeError:
+                    if self.storage.debug == True: print("DEBUG: "+str(e))
+                    pass
+
             if not self.success and self.storage.debug == True: print("DEBUG: Ignored empty camera frame")
             else:
                 image = self.storage.opencv.cvtColor(self.storage.opencv.flip(self.storage.capture.image, 1), self.storage.opencv.COLOR_BGR2RGB)
@@ -78,19 +113,10 @@ class hand(Exception):
 
 
         self.mediapipe_init()
-        self.rstset()
+        self.rst = self.storage.rst
 
-        self.rang = [1100, 500, 750, 100]
+        self.rang = self.storage.rang
         pass
-
-    def rstset(self):
-        self.rst = dummy()
-        self.rst.x = dummy()
-        self.rst.y = dummy()
-        self.rst.x.max = -20
-        self.rst.x.min = -80
-        self.rst.y.max = 0
-        self.rst.y.min = -40
 
     def mediapipe_init(self):
         import mediapipe
@@ -199,15 +225,77 @@ class hand(Exception):
         return image
         pass
 
-class train(Exception): 
+class face(Exception): 
     def __init__(self, storage):
         import face_recognition
         self.face_recognition = face_recognition
         self.storage = storage
         self.storage.train = self
+
+        try:
+            tmp = self.storage.opencv
+        except AttributeError:
+            self.storage.load_opencv()
+
         pass
 
-    def main(self):
+    def checkdata(self):
+        try:
+            if self.storage.data == None:
+                if self.storage.load_data() == False:
+                    self.storage.data = {"encodings": [], "names": []}    
+        except AttributeError as e:
+            if self.storage.load_data() == False:
+                self.storage.data = {"encodings": [], "names": []}
+
+
+    def train(self, image):
+
+        self.checkdata()
+        self.storage.data = {"encodings": [], "names": []}
+
+        rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
+        boxes = self.face_recognition.face_locations(rgb, model="hog")
+        encodings = self.face_recognition.face_encodings(rgb, boxes)
+
+        for encoding in encodings:
+            self.storage.data["encodings"].append(encoding)
+            self.storage.data["names"].append("Authorized")
+
+        
+        pass
+
+    def recog(self, image): 
+        self.checkdata()
+
+        rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
+        boxes = self.face_recognition.face_locations(rgb, model="hog")
+        encodings = self.face_recognition.face_encodings(rgb, boxes)
+
+        names = []
+
+        for encoding in encodings:
+            matches = self.face_recognition.compare_faces(self.storage.data["encodings"], encoding, tolerance=self.storage.tolerance)
+
+            if True in matches:
+                matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+                counts = {}
+
+                for i in matchedIdxs:
+                    name = self.storage.data["names"][i]
+                    counts[name] = counts.get(name, 0) + 1
+                name = max(counts, key=counts.get)
+
+        for ((top, right, bottom, left), name) in zip(boxes, names):
+            #rect_HSize = right - left
+            #rect_VSize = right - left
+            # draw the predicted face name on the image - color is in BGR
+            if name == "Authorized":
+                self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
+            else:
+                self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
+
+
         pass
 
 if __name__ == "__main__":
