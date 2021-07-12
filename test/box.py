@@ -16,7 +16,7 @@ class storage(Exception):
         self.load_data()
         self.load_opencv()
         
-        self.camera = [1366, 768]
+        self.camera = [600, 480]
         #self.rang = [1100, 500, 750, 100]
         self.rang = [1100/1366, 500/768, 750/1366, 100/768]
         self.tolerance = 0.3
