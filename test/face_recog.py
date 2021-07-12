@@ -251,7 +251,7 @@ cascade = "haarcascade_frontalface_default.xml"
 # cascade for face detection
 print("[INFO] loading encodings + face detector...")
 data = pickle.loads(open(encodingsP, "rb").read())
-detector = cv2.CascadeClassifier(cascade)
+detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 
 # MLX90614 온도 센서 세팅
 bus = SMBus(1)
@@ -329,7 +329,7 @@ while True:
     boxes = [(y, x + w, y + h, x) for (x, y, w, h) in rects]
 
     # compute the facial embeddings for each face bounding box
-    encodings = face_recognition.face_encodings(rgb, boxes)
+    encodings = face_recognition.face_encodingrectss(rgb, boxes)
     names = []
 
     # loop over the facial embeddings

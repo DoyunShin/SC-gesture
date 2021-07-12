@@ -1,3 +1,6 @@
+from typing import Type
+
+
 class dummy: 
     def __init__(self): pass
 
@@ -13,8 +16,10 @@ class storage(Exception):
         self.rang = [1100, 500, 750, 100]
         self.tolerance = 0.3
 
+        
         self.capture = capture(self)
         self.hand = hand(self)
+        self.face = face(self)
         pass
 
     def rstset(self):
@@ -37,25 +42,34 @@ class storage(Exception):
     def load_data(self):
         from os import path
 
-        if path.isfile("data.json") and path.exists("data.json"):
-            f = open("data.json", "r")
-            from json import loads
-            self.data = loads(f)
+        if path.isfile("data.pickle"):
+            f = open("data.pickle", "rb")
+            from pickle import loads
+            try:
+                print("Load start")
+                self.data = loads(f.read())
+                print("Load end")
+            except TypeError as e:
+                print(e)
+                self.data = None
         else:
-            self.storage = None
+            self.data = None
 
         return False
         pass
    
     def save_data(self):
-        f = open("data.json", "w")
-        from json import dump
-        f.write(dump(self.data))
+        f = open("data.pickle", "wb")
+        from pickle import dumps
+        f.write(dumps(self.data))
         f.close()
 
 class capture(Exception):
     def __init__(self, storage):
         self.storage = storage
+        self.train = dummy()
+        self.train.status = False
+        self.train.time = None
 
         try:
             tmp = self.storage.opencv
@@ -71,13 +85,14 @@ class capture(Exception):
 
     def capture_thread(self):
         self.capture = self.storage.opencv.VideoCapture(0)
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, 1366)
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, 768)
+        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, 600)
+        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, 480)
         self.success, self.image = self.capture.read()
         while True:
             try:    
                 if not self.storage.capture.capture.isOpened(): break
-                self.success, self.image = self.capture.read()
+                self.success, image = self.capture.read()
+                self.image = self.storage.opencv.flip(image, 1)
             except AttributeError as e:
                 print(e)
                 pass
@@ -86,21 +101,52 @@ class capture(Exception):
         while True:
             while True:
                 try:
-                    tmp = self.capture.success
+                    tmp = self.success
                     break
-                except AttributeError:
-                    if self.storage.debug == True: print("DEBUG: "+str(e))
+                except AttributeError as e:
+                    if self.storage.debug: print("DEBUG: "+str(e))
                     pass
 
-            if not self.success and self.storage.debug == True: print("DEBUG: Ignored empty camera frame")
+            if not self.success and self.storage.debug: print("DEBUG: Ignored empty camera frame")
             else:
-                image = self.storage.opencv.cvtColor(self.storage.opencv.flip(self.storage.capture.image, 1), self.storage.opencv.COLOR_BGR2RGB)
-                image = self.storage.hand.handcheck(image)
+                print(self.storage.data)
+                image = self.task(self.image)
                 self.storage.opencv.imshow('MPH', image)
                 if self.storage.opencv.waitKey(5) & 0xFF == 27:
                     self.capture.release()
                     break
 
+    def task(self, image):
+        if self.train.status:
+            print("TRAIN")
+            from threading import Thread
+            from time import time
+            self.storage.face.train(image)
+            #Thread(target=self.storage.face.train, args=(image,)).start()
+            if int(time()) > (self.train.time+2):
+                self.train.status = False
+                self.train.time = None
+                self.storage.save_data()
+
+        elif self.storage.data == None:
+            print("TRAIN-INIT")
+            from threading import Thread
+            from time import time
+            self.train.status = True
+            self.train.time = int(time())
+            self.storage.face.train(image)
+            #Thread(target=self.storage.face.train, args=(image,)).start()
+            
+        else:
+            #self.
+            detected, image = self.storage.face.recog(image)
+            if detected:
+                image = self.storage.hand.handcheck(image)
+            else:
+                print("No face.")
+        
+        return image
+        pass
 
 class hand(Exception):
     def __init__(self, storage):
@@ -126,9 +172,9 @@ class hand(Exception):
         self.mediapipe.hands_conf = self.mediapipe.hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
     def handcheck(self, image):
+        image = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
         image.flags.writeable = False
         results = self.mediapipe.hands_conf.process(image)
-
         image.flags.writeable = True
         image = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_RGB2BGR)
         rclist = []
@@ -169,7 +215,7 @@ class hand(Exception):
                 rst.x.min = int(rst.x.min)
                 rst.y.max = int(rst.y.max)
                 rst.y.min = int(rst.y.min)
-                if self.storage.debug == True:
+                if self.storage.debug:
                     print(rst.x.max)
                     print(rst.x.min)
                     print(rst.y.max)
@@ -185,7 +231,7 @@ class hand(Exception):
                     pass
 
             if count == 1:
-                if self.storage.test == True:
+                if self.storage.test:
                     image = self.hand_int(image, rclist, rst)
                     pass
 
@@ -193,14 +239,14 @@ class hand(Exception):
             elif count == 2:
                 pass
 
-            if self.storage.debug == True: print(results.multi_hand_landmarks)
+            if self.storage.debug: print(results.multi_hand_landmarks)
 
         self.storage.opencv.rectangle(image, (self.rang[0], self.rang[1]), (self.rang[2], self.rang[3]), (255,255,0), 2)
 
         return image
 
     def hand_int(self, image, result, rst):
-        if result[0]["inbox"] == True: data = result[0]["data"]
+        if result[0]["inbox"]: data = result[0]["data"]
         else: data = result[1]["data"]
 
         count = 0
@@ -220,7 +266,7 @@ class hand(Exception):
         self.storage.opencv.putText(image, str(count), (rst.x.min, rst.y.max), self.storage.opencv.FONT_ITALIC, 2, self.storage.opencv.LINE_AA)
 
         #print(str(count)+", "+str(data[8]["y"])+", "+str(mid))
-        print(count)
+        if self.storage.debug: print(count)
 
         return image
         pass
@@ -231,6 +277,7 @@ class face(Exception):
         self.face_recognition = face_recognition
         self.storage = storage
         self.storage.train = self
+        self.detector = self.storage.opencv.CascadeClassifier("haarcascade_frontalface_default.xml")
 
         try:
             tmp = self.storage.opencv
@@ -248,11 +295,10 @@ class face(Exception):
             if self.storage.load_data() == False:
                 self.storage.data = {"encodings": [], "names": []}
 
+        
 
     def train(self, image):
-
         self.checkdata()
-        self.storage.data = {"encodings": [], "names": []}
 
         rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
         boxes = self.face_recognition.face_locations(rgb, model="hog")
@@ -266,13 +312,25 @@ class face(Exception):
         pass
 
     def recog(self, image): 
+        from time import time
+        print("Start: "+str(time()))
         self.checkdata()
 
+        print("Source1: "+str(time()))
+        gray = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2GRAY)
+        print("Source2: "+str(time()))
         rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
+        print("Source3: "+str(time()))
+        rects = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=self.storage.opencv.CASCADE_SCALE_IMAGE)
+        print("Source4: "+str(time()))
+        #rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
         boxes = self.face_recognition.face_locations(rgb, model="hog")
+        print("Source5: "+str(time()))
         encodings = self.face_recognition.face_encodings(rgb, boxes)
+        print("Source6: "+str(time()))
 
         names = []
+        dtc = False
 
         for encoding in encodings:
             matches = self.face_recognition.compare_faces(self.storage.data["encodings"], encoding, tolerance=self.storage.tolerance)
@@ -291,11 +349,13 @@ class face(Exception):
             #rect_VSize = right - left
             # draw the predicted face name on the image - color is in BGR
             if name == "Authorized":
-                self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
+                print("authorized")
+                dtc = True
+                image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
             else:
-                self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
-
-
+                image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
+        print("END: "+str(time()))
+        return dtc, image
         pass
 
 if __name__ == "__main__":
