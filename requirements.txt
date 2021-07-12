@@ -1,4 +1,4 @@
-mediapipe
+mediapipe-rpi4
 requests
 numpy
 opencv-python
