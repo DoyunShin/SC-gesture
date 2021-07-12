@@ -136,6 +136,7 @@ class capture(Exception):
                 self.train.status = False
                 self.train.time = None
                 self.storage.save_data()
+            now = "FaceTrain"
 
         elif self.storage.data == None:
             print("TRAIN-INIT")
@@ -145,7 +146,7 @@ class capture(Exception):
             self.train.time = int(time())
             if self.storage.face.train(image) == False: self.train.time+1
             #Thread(target=self.storage.face.train, args=(image,)).start()
-            
+            now = "FaceTrain"
         else:
             #self.
             if self.storage.facestart == False:
@@ -189,6 +190,11 @@ class count(Exception):
         self.now = "menu"
         self.before = -1
         self.beforetime
+        self.req = get
+        self.fan = 0
+        self.light = 0
+        self.fanwork = False
+        self.lightwork = False
         pass
     
     def main(self, count):
@@ -207,30 +213,147 @@ class count(Exception):
             elif count == 3: self.three()
             elif count == 4: self.four()
             elif count == 0: self.five()
+
+            self.before = -1
                 
         
+    def fanc(self, count):
+        if self.fanwork == True: return
+        self.fanwork = True
+        from time import sleep
+        if count == 0:
+            if self.fan == 0: pass
+            elif self.fan == 1:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 2:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 3:
+                self.req("http://192.168.4.1/H")
+        elif count == 1:
+            if self.fan == 0:
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 1: pass
+            elif self.fan == 2:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 3:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+        elif count == 2:
+            if self.fan == 0:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 1:
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 2: pass
+            elif self.fan == 3:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+        elif count == 3:
+            if self.fan == 0:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 1:
+                self.req("http://192.168.4.1/H")
+                sleep(0.7)
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 2:
+                self.req("http://192.168.4.1/H")
+            elif self.fan == 3: pass
+        else:
+            print("SOMETHING WENT WRONG")
+        
+        self.fan = count
+        self.fanwork = False
+        
+        return
 
+    def lightc(self, count):
+        if self.lightwork == True: return
+        self.lightwork = True
+        if count == 0:
+            if self.light == 0: pass
+            elif self.light == 1:
+                self.req("http://192.168.4.1/L")
+        elif count == 1:
+            if self.light == 0:
+                self.req("http://192.168.4.1/H")
+            elif self.light == 1: pass
+        else:
+            print("SOMETHING WENT WRONG")
+        
+        self.light = count
+        self.lightwork = False
+        return
 
 
     def zero(self):
-        if self.now == "menu":
-            return
+        from threading import Thread
+        if self.now == "menu": return
+        elif self.now == "fan":
+            Thread(target=self.fanc, args=(0,)).start()
+        elif self.now == "light":
+            Thread(target=self.lightc, args=(1,)).start()
             pass
         pass
 
     def one(self):
+        from threading import Thread
+        if self.now == "menu":
+            self.now = "fan"
+        elif self.now == "fan":
+            Thread(target=self.fanc, args=(1,)).start()
+        elif self.now == "light":
+            Thread(target=self.lightc, args=(1,)).start()
+            pass
+        
         pass
 
     def two(self):
+        from threading import Thread
+        if self.now == "menu":
+            self.now = "light"
+        elif self.now == "fan":
+            if self.fanwork == True: return
+            Thread(target=self.fanc, args=(2,)).start()
+        
         pass
 
     def three(self):
+        from threading import Thread
+        if self.now == "menu":
+            return
+        elif self.now == "fan":
+            if self.fanwork == True: return
+            Thread(target=self.fanc, args=(3,)).start()
         pass
 
     def four(self):
+        if self.now == "menu":
+            return
         pass
     
     def five(self):
+        if self.now == "menu": return
+        else:
+            self.now = "menu"
         pass
 
 
