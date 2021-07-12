@@ -157,7 +157,7 @@ class capture(Exception):
             if self.storage.authorized: 
                 image, count = self.storage.hand.handcheck(image)
                 if count != -1:
-                    self.count.main(count)
+                    self.storage.count.main(count)
             else: print("No face.")
 
         
