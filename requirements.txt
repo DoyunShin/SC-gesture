@@ -2,4 +2,4 @@ mediapipe-rpi4
 requests
 numpy
 opencv-python
-opencv-contrib-python
+opencv-contrib-python==4.1.0.25
