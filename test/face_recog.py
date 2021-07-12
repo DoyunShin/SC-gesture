@@ -2,23 +2,23 @@
 #! /usr/bin/python3
 
 # import the necessary packages
-from imutils.video import VideoStream
-from imutils.video import FPS
+#from imutils.video import VideoStream
+#from imutils.video import FPS
 import face_recognition
-import imutils
+#import imutils
 import pickle
 import time
 import cv2
 import numpy
 import os
-import requests
-from pyzbar import pyzbar
+#import requests
+#from pyzbar import pyzbar
 from datetime import datetime
 
-from smbus2 import SMBus
-from Adafruit_AMG88xx import Adafruit_AMG88xx
-from mlx90614 import MLX90614
-from thermal_image import thermal_draw
+#from smbus2 import SMBus
+#from Adafruit_AMG88xx import Adafruit_AMG88xx
+#from mlx90614 import MLX90614
+#from thermal_image import thermal_draw
 from PIL import ImageFont, ImageDraw, Image
 
 face_classifier = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')

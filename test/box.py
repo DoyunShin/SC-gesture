@@ -277,7 +277,6 @@ class face(Exception):
         self.face_recognition = face_recognition
         self.storage = storage
         self.storage.train = self
-        self.detector = self.storage.opencv.CascadeClassifier("haarcascade_frontalface_default.xml")
 
         try:
             tmp = self.storage.opencv
@@ -301,8 +300,8 @@ class face(Exception):
         self.checkdata()
 
         rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
-        boxes = self.face_recognition.face_locations(rgb, model="hog")
-        encodings = self.face_recognition.face_encodings(rgb, boxes)
+        boxes = self.face_recognition.face_locations(rgb)
+        encodings = self.face_recognition.face_encodings(rgb, boxes)[0]
 
         for encoding in encodings:
             self.storage.data["encodings"].append(encoding)
@@ -313,47 +312,48 @@ class face(Exception):
 
     def recog(self, image): 
         from time import time
+        import numpy as np
         print("Start: "+str(time()))
         self.checkdata()
 
         print("Source1: "+str(time()))
-        gray = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2GRAY)
-        print("Source2: "+str(time()))
-        rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
-        print("Source3: "+str(time()))
-        rects = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=self.storage.opencv.CASCADE_SCALE_IMAGE)
+        image_rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
         print("Source4: "+str(time()))
-        #rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
-        boxes = self.face_recognition.face_locations(rgb, model="hog")
+        location = self.face_recognition.face_locations(image_rgb)
         print("Source5: "+str(time()))
-        encodings = self.face_recognition.face_encodings(rgb, boxes)
+        encodings = self.face_recognition.face_encodings(image_rgb, location)
         print("Source6: "+str(time()))
 
         names = []
         dtc = False
 
         for encoding in encodings:
-            matches = self.face_recognition.compare_faces(self.storage.data["encodings"], encoding, tolerance=self.storage.tolerance)
+            print(self.storage.data["encodings"])
+            matches = self.face_recognition.compare_faces(self.storage.data["encodings"], encoding)
+            name = "Unknown"
 
-            if True in matches:
-                matchedIdxs = [i for (i, b) in enumerate(matches) if b]
-                counts = {}
+            face_distances = self.face_recognition.face_distance(self.storage.data["encodings"], encoding)
+            best_match_index = np.argmin(face_distances)
 
-                for i in matchedIdxs:
-                    name = self.storage.data["names"][i]
-                    counts[name] = counts.get(name, 0) + 1
-                name = max(counts, key=counts.get)
-
-        for ((top, right, bottom, left), name) in zip(boxes, names):
-            #rect_HSize = right - left
-            #rect_VSize = right - left
-            # draw the predicted face name on the image - color is in BGR
-            if name == "Authorized":
-                print("authorized")
+            if matches[best_match_index]: 
+                name = self.storage.data["names"][best_match_index]
                 dtc = True
-                image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
-            else:
-                image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
+
+
+            names.append(name)
+
+        print(names)
+
+        #for ((top, right, bottom, left), name) in zip(boxes, names):
+        #    #rect_HSize = right - left
+        #    #rect_VSize = right - left
+        #    # draw the predicted face name on the image - color is in BGR
+        #    if name == "Authorized":
+        #        print("authorized")
+        #        dtc = True
+        #        image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
+        #    else:
+        #        image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
         print("END: "+str(time()))
         return dtc, image
         pass
