@@ -189,7 +189,7 @@ class count(Exception):
         self.storage = storage
         self.now = "menu"
         self.before = -1
-        self.beforetime
+        self.beforetime = 0
         self.req = get
         self.fan = 0
         self.light = 0
