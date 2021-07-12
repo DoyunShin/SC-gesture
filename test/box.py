@@ -417,10 +417,10 @@ class hand(Exception):
                     if landmark.y > rst.y.max: rst.y.max = landmark.y
                     if landmark.y < rst.y.min: rst.y.min = landmark.y
                 
-                rst.x.max *= 1366
-                rst.x.min *= 1366
-                rst.y.max *= 768
-                rst.y.min *= 768
+                rst.x.max *= self.storage.camera[0]
+                rst.x.min *= self.storage.camera[0]
+                rst.y.max *= self.storage.camera[1]
+                rst.y.min *= self.storage.camera[1]
 
                 rst.x.max += self.rst.x.max
                 rst.x.min += self.rst.x.min
