@@ -411,7 +411,7 @@ class hand(Exception):
                 rst.y.max = 0
                 rst.y.min = 1
                 for landmark in landmarks.landmark:
-                    rclistb.append({"x": int(landmark.x * 1366), "y": int(landmark.y * 768), "z": landmark.z})
+                    rclistb.append({"x": int(landmark.x * self.storage.camera[0]), "y": int(landmark.y * self.storage.camera[1]), "z": landmark.z})
                     if landmark.x > rst.x.max: rst.x.max = landmark.x
                     if landmark.x < rst.x.min: rst.x.min = landmark.x
                     if landmark.y > rst.y.max: rst.y.max = landmark.y
