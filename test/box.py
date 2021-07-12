@@ -101,7 +101,7 @@ class capture(Exception):
             try:    
                 if not self.capture.isOpened(): break
                 self.success, image = self.capture.read()
-                self.image = self.storage.opencv.flip(image, 1)
+                self.image = self.storage.opencv.flip(image, 0)
             except AttributeError as e:
                 print(e)
                 pass
