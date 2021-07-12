@@ -36,10 +36,14 @@ class storage(Exception):
         self.rst = dummy()
         self.rst.x = dummy()
         self.rst.y = dummy()
-        self.rst.x.max = -20
-        self.rst.x.min = -80
+        #self.rst.x.max = -20
+        #self.rst.x.min = -80
+        #self.rst.y.max = 0
+        #self.rst.y.min = -40
+        self.rst.x.max = 0
+        self.rst.x.min = 0
         self.rst.y.max = 0
-        self.rst.y.min = -40
+        self.rst.y.min = 0
 
 
 
