@@ -167,7 +167,7 @@ class capture(Exception):
             else: print("No face.")
 
         
-        self.storage.opencv.putText(image, now, (1,1), self.storage.opencv.FONT_ITALIC, 3, self.storage.opencv.LINE_AA)
+        self.storage.opencv.putText(image, self.storage.count.now, (1,1), self.storage.opencv.FONT_ITALIC, 3, self.storage.opencv.LINE_AA)
 
         return image
         pass
