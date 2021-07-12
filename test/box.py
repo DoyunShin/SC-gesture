@@ -1,5 +1,8 @@
 from typing import Type
 
+from numpy import zeros
+import requests
+
 
 class dummy: 
     def __init__(self): pass
@@ -12,14 +15,21 @@ class storage(Exception):
         self.rstset()
         self.load_data()
         self.load_opencv()
-
-        self.rang = [1100, 500, 750, 100]
+        
+        self.camera = [1366, 768]
+        #self.rang = [1100, 500, 750, 100]
+        self.rang = [1100/1366, 500/768, 750/1366, 100/768]
         self.tolerance = 0.3
+        self.authorized = False
+        self.facestart = False
+        self.stack = 0
+        self.watitime = 2
 
         
         self.capture = capture(self)
         self.hand = hand(self)
         self.face = face(self)
+        self.count = count(self)
         pass
 
     def rstset(self):
@@ -82,15 +92,14 @@ class capture(Exception):
         self.capturethread = Thread(target=self.capture_thread)
         self.capturethread.start()
 
-
     def capture_thread(self):
         self.capture = self.storage.opencv.VideoCapture(0)
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, 600)
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, 480)
+        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, self.storage.camera[0])
+        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, self.storage.camera[1])
         self.success, self.image = self.capture.read()
         while True:
             try:    
-                if not self.storage.capture.capture.isOpened(): break
+                if not self.capture.isOpened(): break
                 self.success, image = self.capture.read()
                 self.image = self.storage.opencv.flip(image, 1)
             except AttributeError as e:
@@ -109,7 +118,6 @@ class capture(Exception):
 
             if not self.success and self.storage.debug: print("DEBUG: Ignored empty camera frame")
             else:
-                print(self.storage.data)
                 image = self.task(self.image)
                 self.storage.opencv.imshow('MPH', image)
                 if self.storage.opencv.waitKey(5) & 0xFF == 27:
@@ -117,11 +125,12 @@ class capture(Exception):
                     break
 
     def task(self, image):
+        now = "Unknown"
         if self.train.status:
             print("TRAIN")
             from threading import Thread
             from time import time
-            self.storage.face.train(image)
+            if self.storage.face.train(image) == False: self.train.time+1
             #Thread(target=self.storage.face.train, args=(image,)).start()
             if int(time()) > (self.train.time+2):
                 self.train.status = False
@@ -134,19 +143,97 @@ class capture(Exception):
             from time import time
             self.train.status = True
             self.train.time = int(time())
-            self.storage.face.train(image)
+            if self.storage.face.train(image) == False: self.train.time+1
             #Thread(target=self.storage.face.train, args=(image,)).start()
             
         else:
             #self.
-            detected, image = self.storage.face.recog(image)
-            if detected:
-                image = self.storage.hand.handcheck(image)
-            else:
-                print("No face.")
+            if self.storage.facestart == False:
+                from threading import Thread
+                Thread(target=self.task_recog).start()
+                self.storage.facestart = True
+
+            if self.storage.authorized: 
+                image, count = self.storage.hand.handcheck(image)
+                if count != -1:
+                    self.count.main(count)
+            else: print("No face.")
+
         
+        self.storage.opencv.putText(image, now, (1,1), self.storage.opencv.FONT_ITALIC, 3, self.storage.opencv.LINE_AA)
+
         return image
         pass
+
+    def task_recog(self):
+        from time import sleep, time
+        now = 0
+        while True:
+            now = int(time())
+            if not self.capture.isOpened(): break
+            image = self.image
+            check, image = self.storage.face.recog(image)
+            self.storage.authorized = check
+            sleep(5)
+        pass
+
+    def task_count(self, count):
+        if count == -1: return
+        elif count == 0: pass
+        pass
+
+class count(Exception):
+    def __init__(self, storage):
+        from requests import get
+        self.storage = storage
+        self.now = "menu"
+        self.before = -1
+        self.beforetime
+        pass
+    
+    def main(self, count):
+        from time import time
+        
+
+        if count == -1: 
+            self.before = -1
+            return
+        if self.before != count:
+                self.beforetime = int(time())
+        elif self.before == count and self.beforetime+self.storage.waittime > time():
+            if count == 0: self.zero()
+            elif count == 1: self.one()
+            elif count == 2: self.two()
+            elif count == 3: self.three()
+            elif count == 4: self.four()
+            elif count == 0: self.five()
+                
+        
+
+
+
+    def zero(self):
+        if self.now == "menu":
+            return
+            pass
+        pass
+
+    def one(self):
+        pass
+
+    def two(self):
+        pass
+
+    def three(self):
+        pass
+
+    def four(self):
+        pass
+    
+    def five(self):
+        pass
+
+
 
 class hand(Exception):
     def __init__(self, storage):
@@ -162,6 +249,7 @@ class hand(Exception):
         self.rst = self.storage.rst
 
         self.rang = self.storage.rang
+        self.camera = self.storage.camera
         pass
 
     def mediapipe_init(self):
@@ -178,6 +266,7 @@ class hand(Exception):
         image.flags.writeable = True
         image = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_RGB2BGR)
         rclist = []
+        count = -1
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 self.mediapipe.drawing.draw_landmarks(image, hand_landmarks, self.mediapipe.hands.HAND_CONNECTIONS)
@@ -221,7 +310,7 @@ class hand(Exception):
                     print(rst.y.max)
                     print(rst.y.min)
                 
-                if rst.x.max < self.rang[0] and rst.y.max < self.rang[1] and rst.x.min > self.rang[2] and rst.y.min > self.rang[3]:
+                if rst.x.max < self.rang[0]*self.camera[0] and rst.y.max < self.rang[1]*self.camera[1] and rst.x.min > self.rang[2]*self.camera[0] and rst.y.min > self.rang[3]*self.camera[1]:
                     self.storage.opencv.rectangle(image, (rst.x.max, rst.y.max), (rst.x.min, rst.y.min), (0,255,0), 3)
                     rclist.append({"inbox": True, "data": rclistb})
                     count += 1
@@ -232,7 +321,7 @@ class hand(Exception):
 
             if count == 1:
                 if self.storage.test:
-                    image = self.hand_int(image, rclist, rst)
+                    image, count = self.hand_int(image, rclist, rst)
                     pass
 
                 pass
@@ -241,9 +330,9 @@ class hand(Exception):
 
             if self.storage.debug: print(results.multi_hand_landmarks)
 
-        self.storage.opencv.rectangle(image, (self.rang[0], self.rang[1]), (self.rang[2], self.rang[3]), (255,255,0), 2)
+        self.storage.opencv.rectangle(image, (int(self.rang[0]*self.camera[0]), int(self.rang[1]*self.camera[1])), (int(self.rang[2]*self.camera[0]), int(self.rang[3]*self.camera[1])), (255,255,0), 2)
 
-        return image
+        return image, count
 
     def hand_int(self, image, result, rst):
         if result[0]["inbox"]: data = result[0]["data"]
@@ -268,7 +357,7 @@ class hand(Exception):
         #print(str(count)+", "+str(data[8]["y"])+", "+str(mid))
         if self.storage.debug: print(count)
 
-        return image
+        return image, count
         pass
 
 class face(Exception): 
@@ -301,34 +390,28 @@ class face(Exception):
 
         rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
         boxes = self.face_recognition.face_locations(rgb)
-        encodings = self.face_recognition.face_encodings(rgb, boxes)[0]
+        encodings = self.face_recognition.face_encodings(rgb, boxes)
 
+        if encodings == []: return False
         for encoding in encodings:
             self.storage.data["encodings"].append(encoding)
             self.storage.data["names"].append("Authorized")
 
-        
+        return True
         pass
 
     def recog(self, image): 
-        from time import time
         import numpy as np
-        print("Start: "+str(time()))
         self.checkdata()
 
-        print("Source1: "+str(time()))
         image_rgb = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_BGR2RGB)
-        print("Source4: "+str(time()))
         location = self.face_recognition.face_locations(image_rgb)
-        print("Source5: "+str(time()))
         encodings = self.face_recognition.face_encodings(image_rgb, location)
-        print("Source6: "+str(time()))
 
         names = []
         dtc = False
 
         for encoding in encodings:
-            print(self.storage.data["encodings"])
             matches = self.face_recognition.compare_faces(self.storage.data["encodings"], encoding)
             name = "Unknown"
 
@@ -339,22 +422,8 @@ class face(Exception):
                 name = self.storage.data["names"][best_match_index]
                 dtc = True
 
-
             names.append(name)
 
-        print(names)
-
-        #for ((top, right, bottom, left), name) in zip(boxes, names):
-        #    #rect_HSize = right - left
-        #    #rect_VSize = right - left
-        #    # draw the predicted face name on the image - color is in BGR
-        #    if name == "Authorized":
-        #        print("authorized")
-        #        dtc = True
-        #        image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(0, 255, 0), 2)
-        #    else:
-        #        image = self.storage.opencv.rectangle(image, (left, top), (right, bottom),(255, 0, 0), 2)
-        print("END: "+str(time()))
         return dtc, image
         pass
 
