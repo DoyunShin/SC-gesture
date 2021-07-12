@@ -94,15 +94,19 @@ class capture(Exception):
 
     def capture_thread(self):
         from os import system
-        system("sudo modprobe bcm2835-v4l2")
+        from imutils.video import VideoStream
+        from imutils import resize
         self.capture = self.storage.opencv.VideoCapture(0)
+        self.capture = VideoStream(src=0).start()
         self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, self.storage.camera[0])
         self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, self.storage.camera[1])
-        self.success, self.image = self.capture.read()
+        image = self.capture.read()
+        self.success = True
         while True:
             try:    
                 if not self.capture.isOpened(): break
-                self.success, image = self.capture.read()
+                image = self.capture.read()
+                frame = resize(image, width=640, height=480)
                 self.image = self.storage.opencv.flip(image, 1)
             except AttributeError as e:
                 print(e)

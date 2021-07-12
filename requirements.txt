@@ -4,3 +4,4 @@ numpy
 opencv-python
 opencv-contrib-python==4.1.0.25
 face_recognition
+imutils
