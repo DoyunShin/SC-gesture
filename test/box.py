@@ -93,15 +93,15 @@ class capture(Exception):
         self.capturethread.start()
 
     def capture_thread(self):
-        self.capture = self.storage.opencv.VideoCapture(0)
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, self.storage.camera[0])
-        self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, self.storage.camera[1])
+        self.capture = self.storage.opencv.VideoCapture(-1)
+        #self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, self.storage.camera[0])
+        #self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, self.storage.camera[1])
         self.success, self.image = self.capture.read()
         while True:
             try:    
                 if not self.capture.isOpened(): break
                 self.success, image = self.capture.read()
-                self.image = self.storage.opencv.flip(image, 0)
+                self.image = self.storage.opencv.flip(image, 1)
             except AttributeError as e:
                 print(e)
                 pass
