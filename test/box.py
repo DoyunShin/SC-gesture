@@ -93,6 +93,8 @@ class capture(Exception):
         self.capturethread.start()
 
     def capture_thread(self):
+        from os import system
+        system("sudo modprobe bcm2835-v4l2")
         self.capture = self.storage.opencv.VideoCapture(0)
         self.capture.set(self.storage.opencv.CAP_PROP_FRAME_WIDTH, self.storage.camera[0])
         self.capture.set(self.storage.opencv.CAP_PROP_FRAME_HEIGHT, self.storage.camera[1])
