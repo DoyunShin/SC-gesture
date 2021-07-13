@@ -1,5 +1,3 @@
-from typing import Type
-
 from numpy import zeros
 import requests
 
@@ -167,7 +165,7 @@ class capture(Exception):
             else: print("No face.")
 
         
-        self.storage.opencv.putText(image, self.storage.count.now, (1,1), self.storage.opencv.FONT_ITALIC, 3, self.storage.opencv.LINE_AA)
+        self.storage.opencv.putText(image, self.storage.count.now, (0,20), self.storage.opencv.FONT_ITALIC, 1, self.storage.opencv.LINE_AA)
 
         return image
         pass
@@ -392,6 +390,7 @@ class hand(Exception):
         image = self.storage.opencv.cvtColor(image, self.storage.opencv.COLOR_RGB2BGR)
         rclist = []
         count = -1
+        cout = False
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 self.mediapipe.drawing.draw_landmarks(image, hand_landmarks, self.mediapipe.hands.HAND_CONNECTIONS)
@@ -445,11 +444,7 @@ class hand(Exception):
                     pass
 
             if count == 1:
-                if self.storage.test:
-                    image, count = self.hand_int(image, rclist, rst)
-                    pass
-
-                pass
+                image, count = self.hand_int(image, rclist, rst)
             elif count == 2:
                 pass
 
